@@ -17,11 +17,18 @@ export class MyMemoryProvider implements AIProvider {
           q: text,
           langpair: langPair
         },
-        timeout: 10000
+        timeout: 15000,
+        headers: {
+          'User-Agent': 'Mozilla/5.0'
+        }
       });
 
       if (response.data && response.data.responseData && response.data.responseData.translatedText) {
-        return response.data.responseData.translatedText;
+        const translated = response.data.responseData.translatedText;
+        // Check for error responses
+        if (translated && !translated.includes('MYMEMORY WARNING')) {
+          return translated;
+        }
       }
 
       throw new TranslationError('Invalid response from MyMemory', ErrorType.API_ERROR, this.name);

@@ -15,9 +15,8 @@ export class GoogleTranslateProvider implements AIProvider {
       const target = options.targetLanguage;
       
       // Using Google Translate API without authentication (free, unofficial)
-      const response = await axios.post(
+      const response = await axios.get(
         'https://translate.googleapis.com/translate_a/single',
-        null,
         {
           params: {
             client: 'gtx',
@@ -26,7 +25,10 @@ export class GoogleTranslateProvider implements AIProvider {
             dt: 't',
             q: text
           },
-          timeout: 10000
+          timeout: 15000,
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+          }
         }
       );
 

@@ -39,7 +39,7 @@ npm run build
 npm start
 ```
 
-API available at `http://localhost:3000`. See [API.md](API.md) for complete API documentation.
+API available at `http://localhost:3008`. See [API.md](API.md) for complete API documentation.
 
 ## Library Usage
 

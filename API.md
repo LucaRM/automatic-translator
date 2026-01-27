@@ -21,7 +21,7 @@ This guide covers running the automatic translator as a local REST API server.
    npm start
    ```
 
-The API will be available at `http://localhost:3000`
+The API will be available at `http://localhost:3008`
 
 ## API Endpoints
 
@@ -207,7 +207,7 @@ DEEPL_USE_FREE_API=true
 
 ```bash
 # Simple translation
-curl -X POST http://localhost:3000/translate \
+curl -X POST http://localhost:3008/translate \
   -H "Content-Type: application/json" \
   -d '{
     "text": "Hello world",
@@ -215,7 +215,7 @@ curl -X POST http://localhost:3000/translate \
   }'
 
 # With source language
-curl -X POST http://localhost:3000/translate \
+curl -X POST http://localhost:3008/translate \
   -H "Content-Type: application/json" \
   -d '{
     "text": "Hello world",
@@ -224,7 +224,7 @@ curl -X POST http://localhost:3000/translate \
   }'
 
 # With specific provider (no fallback)
-curl -X POST http://localhost:3000/translate \
+curl -X POST http://localhost:3008/translate \
   -H "Content-Type: application/json" \
   -d '{
     "text": "Hello world",
@@ -233,7 +233,7 @@ curl -X POST http://localhost:3000/translate \
   }'
 
 # Batch translation
-curl -X POST http://localhost:3000/translate/batch \
+curl -X POST http://localhost:3008/translate/batch \
   -H "Content-Type: application/json" \
   -d '{
     "texts": ["Hello", "Good morning"],
@@ -245,7 +245,7 @@ curl -X POST http://localhost:3000/translate/batch \
 
 ```javascript
 // Simple translation
-const response = await fetch('http://localhost:3000/translate', {
+const response = await fetch('http://localhost:3008/translate', {
   method: 'POST',
   headers: {
     'Content-Type': 'application/json',
@@ -266,7 +266,7 @@ console.log(result.translatedText);
 import requests
 
 # Simple translation
-response = requests.post('http://localhost:3000/translate', json={
+response = requests.post('http://localhost:3008/translate', json={
     'text': 'Hello world',
     'targetLanguage': 'es'
 })

@@ -9,6 +9,8 @@ import {
   LingvaProvider,
   GoogleTranslateProvider,
   YandexProvider,
+  ReversoProvider,
+  PapagoProvider,
   GeminiProvider,
   OpenAIProvider,
   AnthropicProvider,
@@ -21,7 +23,7 @@ import { AIProvider, TranslationOptions } from './types';
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3008;
 
 // Middleware
 app.use(cors());
@@ -30,11 +32,13 @@ app.use(express.json());
 // Initialize providers based on available API keys
 function initializeProviders(): AIProvider[] {
   const providers: AIProvider[] = [
+    new GoogleTranslateProvider(),
+    new ReversoProvider(),
+    new PapagoProvider(),
     new MyMemoryProvider(),
     new LibreTranslateProvider(),
-    new HuggingFaceProvider(process.env.HUGGINGFACE_API_KEY),
     new LingvaProvider(),
-    new GoogleTranslateProvider(),
+    new HuggingFaceProvider(process.env.HUGGINGFACE_API_KEY),
     new YandexProvider()
   ];
 
@@ -63,6 +67,7 @@ const translator = new AutomaticTranslator(initializeProviders());
 
 // Health check endpoint
 app.get('/health', (req: Request, res: Response) => {
+  console.log(`[${new Date().toISOString()}] GET /health`);
   res.json({ 
     status: 'ok', 
     providers: translator.getAvailableProviders(),
@@ -72,34 +77,51 @@ app.get('/health', (req: Request, res: Response) => {
 
 // Get available providers
 app.get('/providers', (req: Request, res: Response) => {
+  console.log(`[${new Date().toISOString()}] GET /providers`);
+  const providers = translator.getAvailableProviders();
+  console.log(`  → Available providers: ${providers.join(', ')}`);
   res.json({ 
-    providers: translator.getAvailableProviders()
+    providers
   });
 });
 
 // Get all providers with status
 app.get('/providers/all', (req: Request, res: Response) => {
+  console.log(`[${new Date().toISOString()}] GET /providers/all`);
   const allProviders = translator.getAllProvidersInfo();
+  const availableCount = allProviders.filter(p => p.available).length;
+  console.log(`  → Total: ${allProviders.length}, Available: ${availableCount}`);
+  allProviders.forEach(p => {
+    console.log(`    - ${p.name}: ${p.available ? '✓' : '✗'}`);
+  });
   res.json({ 
     providers: allProviders,
     total: allProviders.length,
-    available: allProviders.filter(p => p.available).length
+    available: availableCount
   });
 });
 
 // Translation endpoint
 app.post('/translate', async (req: Request, res: Response) => {
+  const startTime = Date.now();
   try {
     const { text, targetLanguage, sourceLanguage, chunkSize, provider } = req.body;
 
+    console.log(`\n[${new Date().toISOString()}] POST /translate`);
+    console.log(`  → Text length: ${text?.length || 0} characters`);
+    console.log(`  → Target: ${targetLanguage}${sourceLanguage ? `, Source: ${sourceLanguage}` : ' (auto-detect)'}`);
+    if (provider) console.log(`  → Specific provider: ${provider}`);
+
     // Validation
     if (!text || typeof text !== 'string') {
+      console.log(`  ✗ Validation failed: Text is required`);
       return res.status(400).json({ 
         error: 'Text is required and must be a string' 
       });
     }
 
     if (!targetLanguage || typeof targetLanguage !== 'string') {
+      console.log(`  ✗ Validation failed: targetLanguage is required`);
       return res.status(400).json({ 
         error: 'targetLanguage is required and must be a string' 
       });
@@ -112,14 +134,22 @@ app.post('/translate', async (req: Request, res: Response) => {
       ...(provider && { specificProvider: provider })
     };
 
+    console.log(`  → Starting translation...`);
     const result = await translator.translate(text, options);
+    const duration = Date.now() - startTime;
+
+    console.log(`  ✓ Translation completed in ${duration}ms`);
+    console.log(`  → Provider used: ${result.provider}`);
+    console.log(`  → Chunks processed: ${result.chunks}`);
+    console.log(`  → Output length: ${result.translatedText.length} characters`);
 
     res.json({
       success: true,
       ...result
     });
   } catch (error: any) {
-    console.error('Translation error:', error);
+    const duration = Date.now() - startTime;
+    console.error(`  ✗ Translation failed after ${duration}ms:`, error.message);
     res.status(500).json({ 
       error: error.message || 'Translation failed',
       success: false
@@ -129,17 +159,25 @@ app.post('/translate', async (req: Request, res: Response) => {
 
 // Batch translation endpoint
 app.post('/translate/batch', async (req: Request, res: Response) => {
+  const startTime = Date.now();
   try {
     const { texts, targetLanguage, sourceLanguage, chunkSize, provider } = req.body;
 
+    console.log(`\n[${new Date().toISOString()}] POST /translate/batch`);
+    console.log(`  → Batch size: ${texts?.length || 0} texts`);
+    console.log(`  → Target: ${targetLanguage}${sourceLanguage ? `, Source: ${sourceLanguage}` : ' (auto-detect)'}`);
+    if (provider) console.log(`  → Specific provider: ${provider}`);
+
     // Validation
     if (!Array.isArray(texts)) {
+      console.log(`  ✗ Validation failed: texts must be an array`);
       return res.status(400).json({ 
         error: 'texts must be an array of strings' 
       });
     }
 
     if (!targetLanguage || typeof targetLanguage !== 'string') {
+      console.log(`  ✗ Validation failed: targetLanguage is required`);
       return res.status(400).json({ 
         error: 'targetLanguage is required and must be a string' 
       });
@@ -152,16 +190,28 @@ app.post('/translate/batch', async (req: Request, res: Response) => {
       ...(provider && { specificProvider: provider })
     };
 
+    console.log(`  → Starting batch translation...`);
     const results = await Promise.all(
-      texts.map(text => translator.translate(text, options))
+      texts.map(async (text, index) => {
+        console.log(`    [${index + 1}/${texts.length}] Translating: "${text.substring(0, 50)}${text.length > 50 ? '...' : ''}"`);
+        const result = await translator.translate(text, options);
+        console.log(`    [${index + 1}/${texts.length}] ✓ Done with ${result.provider}`);
+        return result;
+      })
     );
+    const duration = Date.now() - startTime;
+
+    console.log(`  ✓ Batch translation completed in ${duration}ms`);
+    console.log(`  → Total texts: ${results.length}`);
+    console.log(`  → Total chunks: ${results.reduce((sum, r) => sum + r.chunks, 0)}`);
 
     res.json({
       success: true,
       results
     });
   } catch (error: any) {
-    console.error('Batch translation error:', error);
+    const duration = Date.now() - startTime;
+    console.error(`  ✗ Batch translation failed after ${duration}ms:`, error.message);
     res.status(500).json({ 
       error: error.message || 'Batch translation failed',
       success: false
@@ -171,11 +221,15 @@ app.post('/translate/batch', async (req: Request, res: Response) => {
 
 // Reset providers endpoint
 app.post('/providers/reset', (req: Request, res: Response) => {
+  console.log(`\n[${new Date().toISOString()}] POST /providers/reset`);
   translator.resetProviders();
+  const providers = translator.getAvailableProviders();
+  console.log(`  ✓ Providers reset successfully`);
+  console.log(`  → Available providers: ${providers.join(', ')}`);
   res.json({ 
     success: true,
     message: 'Providers reset successfully',
-    providers: translator.getAvailableProviders()
+    providers
   });
 });
 

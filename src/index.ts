@@ -10,6 +10,8 @@ export { DeepLProvider } from './providers/deepl';
 export { LingvaProvider } from './providers/lingva';
 export { GoogleTranslateProvider } from './providers/googletranslate';
 export { YandexProvider } from './providers/yandex';
+export { ReversoProvider } from './providers/reverso';
+export { PapagoProvider } from './providers/papago';
 export { chunkText } from './utils/chunker';
 export type {
   AIProvider,
