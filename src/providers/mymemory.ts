@@ -23,16 +23,29 @@ export class MyMemoryProvider implements AIProvider {
         }
       });
 
+      // Check for rate limit in response status
+      if (response.data?.responseStatus === 429) {
+        this.available = false;
+        throw new TranslationError('Rate limit exceeded', ErrorType.RATE_LIMIT, this.name);
+      }
+
       if (response.data && response.data.responseData && response.data.responseData.translatedText) {
         const translated = response.data.responseData.translatedText;
-        // Check for error responses
-        if (translated && !translated.includes('MYMEMORY WARNING')) {
+        // Check for error responses in the translated text
+        if (translated && translated.includes('MYMEMORY WARNING')) {
+          this.available = false;
+          throw new TranslationError('Rate limit exceeded', ErrorType.RATE_LIMIT, this.name);
+        }
+        if (translated) {
           return translated;
         }
       }
 
       throw new TranslationError('Invalid response from MyMemory', ErrorType.API_ERROR, this.name);
     } catch (error: any) {
+      if (error instanceof TranslationError) {
+        throw error;
+      }
       if (error.response?.status === 429 || error.response?.data?.responseStatus === 429) {
         this.available = false;
         throw new TranslationError('Rate limit exceeded', ErrorType.RATE_LIMIT, this.name);

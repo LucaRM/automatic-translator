@@ -36,6 +36,10 @@ export class YandexProvider implements AIProvider {
 
       throw new TranslationError('Invalid response from Yandex', ErrorType.API_ERROR, this.name);
     } catch (error: any) {
+      if (error.response?.status === 403) {
+        this.available = false;
+        throw new TranslationError('Yandex requires API key (no longer free without authentication)', ErrorType.API_ERROR, this.name);
+      }
       if (error.response?.status === 429) {
         this.available = false;
         throw new TranslationError('Rate limit exceeded', ErrorType.RATE_LIMIT, this.name);
